@@ -1,0 +1,221 @@
+#!/bin/bash
+
+. ~/src/bashy/boilerplate.inc '' || exit
+o cd "$(dirname -- "$0")"
+o mkdir -p tmp
+
+API=https://api.github.com/
+
+read token < .token || OOPS please create personal access token and store it as user:TOKEN in file .token in this directory
+
+QUICK=:		# unset to do no caching -- NOT RECOMMENDED
+[ -n "$QUICK" ] && STDERR To clean cache: rm -rf "$PWD/tmp/"
+
+hub()
+{
+  local CACHE cmp url="$API${1#"$API"}"
+  v CACHE md5chk -qd "$url"
+  declare -g OUT="tmp/$CACHE"
+
+  [ -n "$QUICK" ] && [ -s "$OUT.url" ] && read cmp < "$OUT.url" && [ ".$cmp" = ".$url" ] && [ -s "$OUT.data" ] && [ -s "$OUT.head" ] && STDERR cache "$CACHE" "$1" && return
+
+  STDERR fetch "$CACHE" "$1"
+  o curl -gsS -u "$token" -H 'Accept: application/vnd.github.v3+json' -o "$OUT.tmp" -D "$OUT.head" "${@:2}" -- "$url"
+  o mv -f "$OUT.tmp" "$OUT.data"
+  o echo "$url" > "$OUT.url"
+}
+
+paged()
+{
+  local url="$1" prefix='['
+  local -A had
+
+  while	echo "$prefix"
+	prefix=","
+	[ -z "${had[":$url"]}" ]
+  do
+	had[":$url"]=1
+	o hub "$url"
+	o cat "$OUT.data"
+
+	# get next link
+	v link sed -n 's/^link: //p' "$OUT.head"
+	next="${link%%'; rel="next"'*}"
+	next="${next##*, }"
+	case "$next" in
+	('<'*[\"\<\>\ ]*'>')	;;	# We do not like certain patterns
+	("<$API"*\?*page=*'>')	url="${next#'<'}"; url="${url%'>'}"; continue;;
+	esac
+	# no next link
+	break
+  done
+  echo ']'
+}
+
+# All repos a user has access to
+user-repos:all()
+{
+  paged 'user/repos?page=1&per_page=100'
+}
+
+# Repos a user is (or might be) responsible for
+user-repos:user()
+{
+  paged 'user/repos?page=1&per_page=100&affiliation=owner,organization_member'
+}
+
+json()
+{
+  local INPUT="$OUT.data"
+  if [ 2 -le $# ]
+  then
+	INPUT=tmp/JSON.tmp
+	o "${@:2}" > "$INPUT"
+  fi
+  o json2sh "j:$1 " ' ' < "$INPUT" > "tmp/JSON.out"
+  local -A BUG
+  o . "tmp/JSON.out"
+
+  if	[ -n "${!BUG[*]}" ]
+  then
+	printf '  (%q)					;;\n' "${!BUG[@]}"
+	OOPS "$1" BUG: Unknown JSON keys encountered
+  fi
+}
+
+j:key()
+{
+  local nr key
+
+  nr="${1%%_[a-z]*}"
+  case "$nr" in
+  (*[^0-9_]*)	OOPS keys0 "$nr" "$@";;
+  (_*__*[0-9])	;;
+  (*)		OOPS keys1 "$nr" "$@";;
+  esac
+
+  key="${1#"$nr"_}"
+  case "$key" in
+  (id)					;;
+  (node__id)				;;
+  (license_0_url)			;;
+  (owner_0_type)			;;
+  (html__url)				;;
+  (pushed__at)				;;
+  (owner_0_received__events__url)	;;
+  (comments__url)			;;
+  (owner_0_id)				;;
+  (branches__url)			;;
+  (teams__url)				;;
+  (archived)				;;
+  (topics_2_)				;;
+  (git__commits__url)			;;
+  (topics)				;;
+  (watchers)				;;
+  (tags__url)				;;
+  (svn__url)				;;
+  (mirror__url)				;;
+  (labels__url)				;;
+  (ssh__url)				;;
+  (issues__url)				;;
+  (releases__url)			;;
+  (collaborators__url)			;;
+  (forks__url)				;;
+  (notifications__url)			;;
+  (owner_0_login)			;;
+  (license)				;;
+  (subscription__url)			;;
+  (forks__count)			;;
+  (blobs__url)				;;
+  (hooks__url)				;;
+  (url)					;;
+  (updated__at)				;;
+  (topics_5_)				;;
+  (statuses__url)			;;
+  (owner_0_html__url)			;;
+  (owner_0_gists__url)			;;
+  (watchers__count)			;;
+  (merges__url)				;;
+  (stargazers__url)			;;
+  (owner_0_starred__url)		;;
+  (homepage)				;;
+  (downloads__url)			;;
+  (open__issues__count)			;;
+  (created__at)				;;
+  (owner_0_events__url)			;;
+  (visibility)				;;
+  (topics_3_)				;;
+  (owner_0_avatar__url)			;;
+  (has__downloads)			;;
+  (private)				;;
+  (topics_4_)				;;
+  (forks)				;;
+  (owner_0_followers__url)		;;
+  (has__issues)				;;
+  (description)				;;
+  (commits__url)			;;
+  (has__pages)				;;
+  (git__refs__url)			;;
+  (owner_0_site__admin)			;;
+  (open__issues)			;;
+  (license_0_spdx__id)			;;
+  (assignees__url)			;;
+  (is__template)			;;
+  (trees__url)				;;
+  (milestones__url)			;;
+  (full__name)				;;
+  (allow__forking)			;;
+  (archive__url)			;;
+  (permissions_0_triage)		;;
+  (disabled)				;;
+  (git__tags__url)			;;
+  (owner_0_node__id)			;;
+  (topics_6_)				;;
+  (clone__url)				;;
+  (license_0_node__id)			;;
+  (language)				;;
+  (permissions_0_pull)			;;
+  (has__wiki)				;;
+  (owner_0_url)				;;
+  (topics_1_)				;;
+  (fork)				;;
+  (contributors__url)			;;
+  (contents__url)			;;
+  (issue__comment__url)			;;
+  (license_0_name)			;;
+  (owner_0_following__url)		;;
+  (compare__url)			;;
+  (owner_0_organizations__url)		;;
+  (pulls__url)				;;
+  (size)				;;
+  (keys__url)				[[ -z "${KEYS["$2"]}" ]] || OOPS duplicate key "$2" at "$1" previous "${KEYS["$2"]}"
+  					KEYS["$2"]="$1";;
+  (issue__events__url)			;;
+  (name)				;;
+  (permissions_0_push)			;;
+  (owner_0_subscriptions__url)		;;
+  (permissions_0_maintain)		;;
+  (languages__url)			;;
+  (deployments__url)			;;
+  (default__branch)			;;
+  (license_0_key)			;;
+  (has__projects)			;;
+  (events__url)				;;
+  (git__url)				;;
+  (permissions_0_admin)			;;
+  (stargazers__count)			;;
+  (owner_0_repos__url)			;;
+  (subscribers__url)			;;
+  (owner_0_gravatar__id)		;;
+  (*)					BUG["$key"]=1;;
+  esac
+}
+
+# Get list of 'keys_url' entries of all repos
+keys_url:user()
+{
+  unset KEYS
+  declare -gA KEYS
+  json key user-repos:user
+}
+
