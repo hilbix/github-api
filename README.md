@@ -42,4 +42,4 @@ WTF why?
   - Afterwards you can remove the PAT and be safe and sound again
   - With NODE you then can even use it for automating processes
   - But leave that for future
-  - (Perhaps there already is something out there?)
+  - (Perhaps there already is something out there, something using OktoKit?)
