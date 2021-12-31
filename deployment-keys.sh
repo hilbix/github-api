@@ -1,4 +1,6 @@
 #!/bin/bash
+#
+# List deployment keys grouped by title
 
 . "$(dirname -- "$0")/.hub"
 
